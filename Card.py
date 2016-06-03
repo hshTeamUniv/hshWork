@@ -99,5 +99,10 @@ class JokerCard(Card):
         return super()
     def __init__(self):
         super().__init__(len(Card.Categories())-1,len(Card.Levels())-1)
+    
+    @staticmethod
+    def createFromJson(Json):
+        return JokerCard().fromJson(Json)
+    
     def isDropable(self):
         return False 
