@@ -9,6 +9,33 @@ class Card:
     __category=0
     __level=0
     __image=None
+    def getButtonTextFormat(self):
+        cate = self.getCategoryAsString()
+        lv = self.getLevelAsString()
+        result = lv+"\n\n"
+        result += cate.rjust( len(cate)+len(lv)+1)+"\n\n"
+        result += lv.rjust( len(cate)+len(lv)*2+2)
+        return result
+    def getConsoleTextFormat(self):
+        cardSideVertical = '|'
+        cardSideHorizontal = '-'
+        cate = self.getCategoryAsString()
+        lv = self.getLevelAsString()
+        line2 = cardSideVertical.ljust(2)+cate.rjust( len(cate)+len(lv)+1)+cardSideVertical.rjust(2)
+        
+        line3 = cardSideVertical.ljust(2) +lv.rjust( len(cate)+len(lv)*2+2)+cardSideVertical.rjust(2)
+        lineVoid = cardSideVertical+"".ljust(len(line3)-2)+cardSideVertical
+        lineTB = cardSideHorizontal*len(line3)
+        line1 = cardSideVertical+lv.ljust(len(line3)-2)+ cardSideVertical
+        lv = self.getLevelAsString()
+        result = lineTB+"\n"
+        result += line1+"\n"
+        result += lineVoid+"\n"
+        result += line2+"\n"
+        result += lineVoid+"\n"
+        result += line3 +"\n"
+        result += lineTB
+        return result
     @staticmethod
     def Categories():
         return Card.__Categories[:]
@@ -17,7 +44,7 @@ class Card:
         return Card.__CategoriesAsArt[:]
     @property
     def ImageFileName(self):
-        return self.__fileName
+        return str(self.__fileName)
     def setCardImage(self,screenResolution=0):
         self.__fileName = Card.LevelsName()[self.getRawLevel()]+"_of_"+self.Categories()[self.getRawCategory()]+"s.gif"
         print(self.__fileName)
@@ -33,7 +60,7 @@ class Card:
         return result
     @staticmethod
     def Levels():
-        return Card.__Levels
+        return Card.__Levels[:]
     def flipImage(self):
         self.__flipImage
     def cardImage(self):
@@ -42,7 +69,7 @@ class Card:
         return self.__CategoriesAsArt[self.__category]+ " "  +self.getLevelAsString()
     def __init__(self,Category=0,Level=0):
         self.setCardAttribute(Category,Level)
-        self.setCardImage()
+        #self.setCardImage()
     def setCardAttribute(self,Category,Level):
         self.setCategory(Category)
         self.setLevel(Level)
@@ -84,10 +111,10 @@ class Card:
         return self.getRawLevel()
 	
     def getCategoryAsString(self):
-        return Card.Categories[self.getCategoryAsIndex()]
+        return Card.Categories()[self.getCategoryAsIndex()]
 	
     def getLevelAsString(self):
-        return self.__Levels[self.__level]
+        return Card.Levels()[self.__level]
 	
     def setLevel(self, Level):
         self.__level = Level
@@ -103,6 +130,8 @@ class JokerCard(Card):
     @staticmethod
     def createFromJson(Json):
         return JokerCard().fromJson(Json)
-    
+    def cloneCard(self):
+        result = JokerCard()
+        return result
     def isDropable(self):
         return False 
