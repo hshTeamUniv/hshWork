@@ -15,7 +15,9 @@ class Deck(list):
     def insert(self,i,x):
         if(type(x) == Card or type(x) == JokerCard):
             super().insert(i,x)
-    
+    def extend(self,v):
+        if(v!=[] and ( type(v[0])==Card or type(v[0])==JokerCard)):
+            return super().extend(self, v)
     
     @staticmethod
     def getSortedDeck():
@@ -48,7 +50,11 @@ class Deck(list):
         data = json.loads(Json)
         deckData = data['deck']
         for jcard in deckData:
-            self.append(Card.createFromJson( jcard))
+            if(jcard["rawcategory"] == str(len(Card.Categories())-1) and \
+               jcard['rawlevel']== str(len(Card.Levels())-1)):
+                self.append(JokerCard.createFromJson( jcard))
+            else:
+                self.append(Card.createFromJson( jcard))
         if(returnObject):
             return self
         
