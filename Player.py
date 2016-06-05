@@ -3,12 +3,45 @@ import random
 import time
 from Deck import *
 from Card import *
+from tkinter import *
+
 
 class Player:
+        
     __hand=None
     __name=""
+    __cFrame = None
     def getResponse(self):
+        pass
+    def delCardFromFrame(self,btn,card,rc=None):
         
+        if(card.isDropable()):
+            btn.destroy()
+            self.__hand.remove(card)
+            del btn,card
+        if(rc!=None):
+            
+            rc()
+            print("=======")
+    __cFrameMaster=None
+    def getCardFrame(self,**kargs):
+        
+        if(self.__cFrame==None and 'parent' in kargs):
+            master = kargs['parent']
+            self.__cFrame = Frame(master)
+            leng = len(self.__hand)
+            for i in range(len(self.__hand)):
+                Grid.columnconfigure(self.__cFrame,i,weight=1)
+                rc = None
+                if('parent' in kargs and 'rankcommand' in kargs):
+                    rc = kargs['rankcommand']
+                btn =Button(self.__cFrame,text=self.__hand[i].getButtonTextFormat(),wraplength=30,height=8,justify=CENTER)
+                btn.config( command=lambda rc=rc,card=self.__hand[i],btn=btn:self.delCardFromFrame( btn,card,rc))
+                btn.grid(row=0,column=i,rowspan=2,stick=N+S+E+W) #.pack(side=LEFT)
+            self.__cFrame.grid(row=0,column=0,stick="news")
+        
+            
+        return self.__cFrame
     @property
     def name(self):
         return self.__name
@@ -23,7 +56,7 @@ class Player:
         
     def popOneCard(self,card):
         for c in self.__hand:
-            if(card==c  ):
+            if(card==c  and card.isDropable()):
                 self.__hand.remove(c)
                 break
     def selectPlayerCard(self,player,card,waitMode=False):

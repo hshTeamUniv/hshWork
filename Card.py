@@ -10,11 +10,14 @@ class Card:
     __level=0
     __image=None
     def getButtonTextFormat(self):
-        cate = self.getCategoryAsString()
+        cate = self.CategoriesAsArt()[self.getCategoryAsIndex()]
         lv = self.getLevelAsString()
-        result = lv+"\n\n"
-        result += cate.rjust( len(cate)+len(lv)+1)+"\n\n"
-        result += lv.rjust( len(cate)+len(lv)*2+2)
+        a = lv
+        b = cate.rjust( len(cate)+len(lv)+2)
+        c = lv.rjust( len(b)*2+len(a)*2+3)
+        result = a.ljust(max(len(c),len(b)))+"\n\n"
+        result += b+"\n\n"
+        result+=c
         return result
     def getConsoleTextFormat(self):
         cardSideVertical = '|'
@@ -22,7 +25,6 @@ class Card:
         cate = self.getCategoryAsString()
         lv = self.getLevelAsString()
         line2 = cardSideVertical.ljust(2)+cate.rjust( len(cate)+len(lv)+1)+cardSideVertical.rjust(2)
-        
         line3 = cardSideVertical.ljust(2) +lv.rjust( len(cate)+len(lv)*2+2)+cardSideVertical.rjust(2)
         lineVoid = cardSideVertical+"".ljust(len(line3)-2)+cardSideVertical
         lineTB = cardSideHorizontal*len(line3)
