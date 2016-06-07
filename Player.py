@@ -9,8 +9,14 @@ class CardButton(Button):
     __subText=""
     def __init__(self, master=None, **kargs):
         super().__init__( master, kargs)
-        #if('text' in kargs):
-            #self.setMainText(kargs['text'])
+        self.__cardObj=None
+        if('card' in kargs):
+            self.setCardObj(kargs['card'])
+    
+    def setCardObj(self,co):
+        self.__cardObj = co
+    def getCardObj(self):
+        return self.__cardObj
     def setMainText(self,txt):
         self.__mainText=txt
         return self
@@ -32,54 +38,101 @@ class CardButton(Button):
             self['text']==self.__mainText
         return self
 
+class ValueContainedCheckButton(Checkbutton):
+    def __init__(self,master,**cnf):
+        super().__init__(master, cnf)
+        self.val = IntVar()
+        self.configure(variable=self.val)
+        
+    def getValue(self):
+        return bool(self.val.get())    
+    
 class Player:
-        
-    __hand=None
-    __name=""
-    __cFrame = None
-    def getResponse(self):
-        pass
-    def delCardFromFrame(self,btn,card,**args):
-        
-        if(card.isDropable()):
-            btn.destroy()
-            self.__hand.remove(card)
-            del btn,card
-        if('rc' in args and args['rc']!=None):
- 
-            args['rc']()
-        if('erpfnc' in args and args['erpfnc']!=None):
-            args['erpfnc']()
-        print(self.__cFrame.winfo_width())
-        
-        if('isPublicFrame' in args):
-            if(args['isPublicFrame']==False):
-                self.__cFrame.winfo_parent().configure(scrollregion = self.__cFrame.winfo_parent().bbox("all"))
-            else:
-                pass
     __cPublicFrame=None
+    @property
+    def frameConfigs(self):
+        return self.__FrameCnfs
     __FrameCnfs = {}
     __rootPublicFrameCanvas=None
     __cPublicScroller=None
-    __cScroller = None
+    __cScroller = None    
+    __hand=None
+    __name=""
+    __cFrame = None
+    
+    
+    def getSelectedCardList(self):
+        children = self.__cFrame.winfo_children()
+        result = []
+        for child in children:
+            chd = child.winfo_children()
+            if(chd[0].getValue() and chd[1].getCardObj().isDropable()):
+                print(chd[0].getValue())
+                result.append(chd[1].getCardObj())
+        if(len(result)!=2):
+            result=[]
+        else:
+            if(result[0].getRawLevel() != result[1].getRawLevel() ):
+                result=[]
+        return result
+        
+    def delSelectedCardsFromFrame(self):
+        return self.delCardsFromFrame(self.getSelectedCardList())
+    def delCardsFromFrame(self,cards):
+        if(len(cards)>2 or cards == () or cards == []):
+            return False
+        isRemoved = self.popTwoCards(cards)
+        if(isRemoved):
+            keymgcls =self.__keymgcls
+        #self.__rootFrameCanvas.configure(scrollregion = self.__rootFrameCanvas.bbox("all"))
+            self.__FrameCnfs[keymgcls].ExistRemoveablePlayer()
+            self.__FrameCnfs[keymgcls].refreshPlayerRank()
+        return isRemoved
+        
+    def delCardFromFrame(self,btn,card,**args):
+        isDrpabe=card.isDropable()
+        cd1=card.cloneCard()
+        print(card.getRawLevel(),cd1.getRawLevel())
+        if(isDrpabe):
+            btn.destroy()
+            self.__hand.remove(card)
+        isPublicFrame = False
+        if('isPublicFrame' in args):
+            isPublicFrame=args['isPublicFrame']
+            if(args['isPublicFrame']==False):
+                
+                self.__rootFrameCanvas.configure(scrollregion = self.__rootFrameCanvas.bbox("all"))
+            else:
+                
+                if(not isDrpabe):
+                    btn.destroy()
+                    self.popOneCard(card)
+                self.__rootPublicFrameCanvas.configure(scrollregion = self.__rootPublicFrameCanvas.bbox("all"))
+        keymgcls = self.__keymgcls
+        if(keymgcls in args and args[keymgcls]!=None):
+            
+            args[keymgcls].ExistRemoveablePlayer()
+            if(isPublicFrame):
+                args[keymgcls].transmitCard(cd1)
+                args[keymgcls].refreshDisplayedCardFrame()
+            args[keymgcls].refreshPlayerRank()
+        
+        del btn,card
+    __keymgcls = 'mgcls'
     def getPublicCardFrame(self,**kargs):
-        if('rootCanvas' in kargs and self.__rootFrameCanvas == None):
-            __rootPublicFrameCanvas=kargs['rootCanvas']
+        if('rootCanvas' in kargs and self.__rootPublicFrameCanvas == None):
+            self.__rootPublicFrameCanvas=kargs['rootCanvas']
         rc = None
         erpfnc = None
-        if('rankcommand' in self.__FrameCnfs):
-            rc = self.__FrameCnfs['rankcommand']
-        elif('rankcommand' in kargs):
-            rc = kargs['rankcommand']
-            self.__FrameCnfs['rankcommand']=kargs['rankcommand']
-        if('erpfnc' in self.__FrameCnfs):
-            erpfnc=self.__FrameCnfs['erpfnc']
-        elif('erpfnc' in kargs):
-            erpfnc=kargs['erpfnc']
-            self.__FrameCnfs['erpfnc'] =kargs['erpfnc']
+        mgcls = None
+        keymgcls =self.__keymgcls
+        if(keymgcls in kargs):
+            self.__FrameCnfs[keymgcls] = kargs[keymgcls]
+        if(keymgcls in self.__FrameCnfs):
+            mgcls = self.__FrameCnfs[keymgcls]
         
         if(self.__cPublicFrame != None):
-            lst = self.__cPublicFrame.winfo_children()[:]
+            lst = self.__cPublicFrame.winfo_children()
             for i in lst:
                 i.destroy()
         if(self.__cPublicFrame==None and 'parent' in kargs):
@@ -89,28 +142,40 @@ class Player:
             self.__cPublicFrame.grid(row=0,column=0,stick="news")
         
         for i in range(len(self.__hand)):
+            
             btn =CardButton(self.__cPublicFrame,text=self.__hand[i].getButtonTextFormat(),wraplength=30,height=8,justify=CENTER).setMainText(self.__hand[i].getButtonTextFormat()).setSubText("Card"+str(i+1)).switchToSubText()
-            btn.config( command=lambda card=self.__hand[i],btn=btn:self.delCardFromFrame( btn,card,rc=rc,erpfnc=erpfnc,isPublicFrame=True))
+            btn.setCardObj(self.__hand[i])
+            btn.config( command=lambda card=self.__hand[i],btn=btn:self.delCardFromFrame( btn,card,mgcls=mgcls,isPublicFrame=True))
             btn.grid(row=0,column=i,rowspan=2,stick=N+S+E+W)
         
+        if(self.__rootPublicFrameCanvas!=None):
+            self.__rootPublicFrameCanvas.configure(scrollregion = self.__rootPublicFrameCanvas.bbox("all"))
                 
         return self.__cPublicFrame
-        
+    def hasSameLevelCard(self):
+        for i in range(len(Card.Levels())):
+            count = 0
+            for j in range(len(self.__hand)):
+                if(self.__hand[j].getRawLevel()==i):
+                    count+=1
+            if(count>1):
+                return True
+        return False
+            
+    def ckbCommand(self):
+        print("ckbcommand")
+    def chgCkb(self,cb):
+        cb.toggle()
+        self.ckbCommand()
     __rootFrameCanvas = None
     def getCardFrame(self,**kargs):
         if('rootCanvas' in kargs and self.__rootFrameCanvas == None):
-            __rootFrameCanvas=kargs['rootCanvas']
-        if('rankcommand' in self.__FrameCnfs):
-            rc = self.__FrameCnfs['rankcommand']
-        elif('rankcommand' in kargs):
-            rc = kargs['rankcommand']
-            self.__FrameCnfs['rankcommand']=kargs['rankcommand']
-        
-        if('erpfnc' in self.__FrameCnfs):
-            erpfnc=self.__FrameCnfs['erpfnc']
-        elif('erpfnc' in kargs):
-            erpfnc=kargs['erpfnc']
-            self.__FrameCnfs['erpfnc'] =kargs['erpfnc']
+            self.__rootFrameCanvas=kargs['rootCanvas']
+        keymgcls = 'mgcls'
+        if(keymgcls in kargs):
+            self.__FrameCnfs[keymgcls] = kargs[keymgcls]
+        if(keymgcls in self.__FrameCnfs):
+            mgcls = self.__FrameCnfs[keymgcls]
         if(self.__cFrame!=None and len(self.__hand)!= len(self.__cFrame.winfo_children())):
             lst = self.__cFrame.winfo_children()
             for i in lst:
@@ -118,10 +183,15 @@ class Player:
             
             for i in range(len(self.__hand)):
                 Grid.columnconfigure(self.__cFrame,i,weight=1)
-                
-                btn =CardButton(self.__cFrame,text=self.__hand[i].getButtonTextFormat(),wraplength=30,height=8).setMainText(self.__hand[i].getButtonTextFormat()).setSubText("Card"+str(i+1)).switchToMainText()
-                btn.config( command=lambda rc=rc,card=self.__hand[i],btn=btn:self.delCardFromFrame( btn,card,rc=rc,erpfnc=erpfnc,isPublicFrame=False))
-                btn.grid(row=0,column=i,rowspan=2,stick=N+S+E+W) #.pack(side=LEFT)
+                p=PanedWindow(self.__cFrame,orient=VERTICAL)
+                cb = ValueContainedCheckButton(p,command=self.ckbCommand,width=0)
+                cb.pack(fill=X)
+                btn =CardButton(p,text=self.__hand[i].getButtonTextFormat(),wraplength=30,height=8).setMainText(self.__hand[i].getButtonTextFormat()).setSubText("Card"+str(i+1)).switchToMainText()
+                btn.setCardObj(self.__hand[i])
+                btn.config(command=lambda cb=cb: self.chgCkb(cb)) #command=lambda card=self.__hand[i],btn=btn:self.delCardFromFrame( btn,card,mgcls=mgcls,isPublicFrame=False))
+                p.add(cb)
+                p.add(btn)
+                p.grid(row=0,column=i,rowspan=2,stick=N+S+E+W) #.pack(side=LEFT)
             
         if(self.__cFrame==None and 'parent' in kargs):
             master = kargs['parent']
@@ -130,11 +200,23 @@ class Player:
             leng = len(self.__hand)
             for i in range(len(self.__hand)):
                 Grid.columnconfigure(self.__cFrame,i,weight=1)
-                btn =CardButton(self.__cFrame,text=self.__hand[i].getButtonTextFormat(),wraplength=30,height=8).setMainText(self.__hand[i].getButtonTextFormat()).setSubText("Card"+str(i+1)).switchToMainText()
-                btn.config( command=lambda rc=rc,card=self.__hand[i],btn=btn:self.delCardFromFrame( btn,card,rc=rc,erpfnc=erpfnc,isPublicFrame=False))
-                btn.grid(row=0,column=i,rowspan=2,stick=N+S+E+W) #.pack(side=LEFT)
+                p=PanedWindow(self.__cFrame,orient=VERTICAL)
+                
+                cb = ValueContainedCheckButton(p,command=self.ckbCommand,width=0)
+                cb.pack(fill=X)
+                btn =CardButton(p,text=self.__hand[i].getButtonTextFormat(),wraplength=30,height=8).setMainText(self.__hand[i].getButtonTextFormat()).setSubText("Card"+str(i+1)).switchToMainText()
+                btn.config(command=lambda cb=cb: self.chgCkb(cb)) #lambda card=self.__hand[i],btn=btn:self.delCardFromFrame( btn,card,mgcls=mgcls,isPublicFrame=False))
+                btn.setCardObj(self.__hand[i])
+                #cb.deselect()
+                p.add(cb)
+                p.add(btn)
+                p.grid(row=0,column=i,rowspan=2,stick=N+S+E+W) #.pack(side=LEFT)
+                
             self.__cFrame.grid(row=0,column=0,stick="news")
         
+        if(self.__rootFrameCanvas!=None):
+            print("work")
+            self.__rootFrameCanvas.configure(scrollregion = self.__rootFrameCanvas.bbox("all"))
             
         return self.__cFrame
     @property
@@ -144,21 +226,31 @@ class Player:
         self.__hand = Deck.getEmptyDeck();
         self.setName(name)
     def popTwoCards(self,cards):
-       for card in cards:
-           self.__hand.remove(card)
-       if(cards!=()):
-            del cards
+        if(len(cards)>2):
+            return False
+        hasJoker = False
+        for card in cards:
+            hasJoker = hasJoker or (not card.isDropable())
+            if(hasJoker):
+                break
+        if(not hasJoker):
+            for card in cards:
+                self.__hand.remove(card)
+            return True
+        return False
+        
         
     def popOneCard(self,card):
         for c in self.__hand:
             if(card==c  and card.isDropable()):
                 self.__hand.remove(c)
                 break
+    '''
     def selectPlayerCard(self,player,card,waitMode=False):
         pdeck = player.getDeck()
         responseIdx = 0#impl this
         return pdeck[responseIdx]
-    
+    '''
     def exportCard(self,exportingIdx):
         result = self.__hand[exportingIdx].cloneCard()
         del self.__hand[exportingIdx]
@@ -185,13 +277,15 @@ class Player:
         self.__hand += cards
         return self.__hand
     def pushCard(self,card):
-        self.__hand.append(card)
+        self.importCard(card)
         return self.__hand
+    def isComputer(self):
+        return False
     def getHand(self):
         return self.__hand
     def getDeck(self):
         return self.__hand
-    def fromJson(self,Json,returnObject=True):
+    def fromJson(self,Json,returnObject=True): #네트워크 스트림에서 받아온 최신 데이터 파싱 
         data = json.loads()
         handData = data['hand']
         nameData = data['name']
@@ -201,7 +295,7 @@ class Player:
         self.__name = nameData
         if(returnObject):
             return self
-    def toJson(self):
+    def toJson(self):#네트워크 스트림에 전송을 위해 로컬 메모리의 변수에서 설정된 데이터를 전송 프로토톨에 맞게  패키징 
         handj = []
         for c in self.__hand:
             handj.add(c.toJson());
@@ -209,9 +303,26 @@ class Player:
         result = json.dumps(result)
         return result
 class Computer(Player):
-    def __init__(self,pname="Computer"):
-        super().__init__(pname)
-            
+    __lstId=0
+    @staticmethod
+    def getLatestComputerId(isAdd=False):
+        if(isAdd):
+            Computer.__lstId+=1
+        return Computer.__lstId
+    def __init__(self,computerId=-1):
+        if(computerId==-1):
+            computerId=Computer.getLatestComputerId(True)
+        super().__init__("Computer"+computerId)
+        self.__cId=computerId
+    
+    
+    @property    
+    def computerId(self):
+        return self.__cId        
+    
+    def isComputer(self):
+        return True
+    
     def popTwoCards(self,selectedIndexes):
         card1 = None
         card2 = None
